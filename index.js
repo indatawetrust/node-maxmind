@@ -50,8 +50,52 @@ exports.openSync = function(filepath, opts) {
   return reader;
 };
 
-exports.init = function() {
-  throw new Error(utils.legacyErrorMessage);
+var cityLookup = null;
+
+exports.init = function(filepath, opts = {}) {
+
+  if (cityLookup) {
+
+    return new Promise((resolve, reject) => {
+
+      resolve(cityLookup);
+
+    });
+
+  } else {
+
+    return new Promise((resolve, reject) => {
+
+      fs.readFile(filepath, function(err, database) {
+        if (isGzip(database)) {
+          return cb(new Error('Looks like you are passing in a file in gzip format, please use mmdb database instead.'));
+        }
+
+        try {
+          var reader = new Reader(database, opts);
+        } catch (err) {
+          return;
+        }
+
+        if (opts && !!opts.watchForUpdates) {
+          fs.watch(filepath, function() {
+            fs.readFile(filepath, function(err, database) {
+              reader.load(database);
+            });
+          });
+        }
+
+        cityLookup = reader
+
+        if (!err) resolve(reader);
+        else reject(err);
+
+      });
+
+    });
+
+  }
+
 };
 
 exports.validate = ip.validate;
